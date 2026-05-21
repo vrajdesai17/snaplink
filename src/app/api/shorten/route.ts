@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
 import { prisma } from "@/lib/db";
+import { auth } from "@/auth";
 import { cacheSet } from "@/lib/redis";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { generateId } from "@/lib/base62";
@@ -83,6 +84,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "maxClicks must be a positive integer." }, { status: 400 });
   }
 
+  const session = await auth();
+  const userId = session?.user?.id ?? null;
+
   const { code, isCustom, error } = await resolveShortCode(url, customSlug);
   if (error) return NextResponse.json({ error }, { status: 409 });
 
@@ -95,6 +99,7 @@ export async function POST(request: NextRequest) {
       customCode: isCustom,
       expiresAt: expiresAt ? new Date(expiresAt) : null,
       maxClicks: maxClicks ?? null,
+      userId,
       ogTitle: ogData.title,
       ogDescription: ogData.description,
       ogImage: ogData.image,

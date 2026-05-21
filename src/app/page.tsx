@@ -1,6 +1,8 @@
 import { UrlForm } from "@/components/url-form";
 import { UrlListClient } from "@/components/url-list-client";
+import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import Link from "next/link";
 
 export const dynamic = "force-dynamic";
 
@@ -12,24 +14,28 @@ export default async function HomePage({
   searchParams: Promise<{ error?: string }>;
 }) {
   const { error } = await searchParams;
+  const session = await auth();
 
-  const recentUrls = await prisma.url.findMany({
-    orderBy: { createdAt: "desc" },
-    take: 10,
-    select: {
-      id: true,
-      originalUrl: true,
-      shortCode: true,
-      createdAt: true,
-      expiresAt: true,
-      maxClicks: true,
-      clickCount: true,
-      isActive: true,
-      ogTitle: true,
-      ogDescription: true,
-      ogImage: true,
-    },
-  });
+  const recentUrls = session?.user?.id
+    ? await prisma.url.findMany({
+        where: { userId: session.user.id },
+        orderBy: { createdAt: "desc" },
+        take: 10,
+        select: {
+          id: true,
+          originalUrl: true,
+          shortCode: true,
+          createdAt: true,
+          expiresAt: true,
+          maxClicks: true,
+          clickCount: true,
+          isActive: true,
+          ogTitle: true,
+          ogDescription: true,
+          ogImage: true,
+        },
+      })
+    : [];
 
   const errorMessages: Record<string, string> = {
     "not-found": "That short link doesn't exist.",
@@ -39,7 +45,6 @@ export default async function HomePage({
 
   return (
     <div className="space-y-12">
-      {/* Hero */}
       <section className="text-center space-y-6 pt-8 pb-4">
         <div className="space-y-3">
           <h1 className="text-4xl sm:text-5xl font-bold tracking-tight">
@@ -74,24 +79,38 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* Recent links */}
-      {recentUrls.length > 0 && (
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-lg font-semibold text-zinc-200">Recent links</h2>
-            <a href="/dashboard" className="text-sm text-zinc-500 hover:text-violet-400 transition-colors">
-              View all →
-            </a>
-          </div>
-          <UrlListClient
-            initialUrls={recentUrls.map((u) => ({
-              ...u,
-              createdAt: u.createdAt.toISOString(),
-              expiresAt: u.expiresAt?.toISOString() ?? null,
-            }))}
-            appUrl={APP_URL}
-          />
-        </section>
+      {session?.user ? (
+        recentUrls.length > 0 ? (
+          <section className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-200">Your recent links</h2>
+              <Link href="/dashboard" className="text-sm text-zinc-500 hover:text-violet-400 transition-colors">
+                View all →
+              </Link>
+            </div>
+            <UrlListClient
+              initialUrls={recentUrls.map((u) => ({
+                ...u,
+                createdAt: u.createdAt.toISOString(),
+                expiresAt: u.expiresAt?.toISOString() ?? null,
+              }))}
+              appUrl={APP_URL}
+            />
+          </section>
+        ) : (
+          <p className="text-center text-zinc-600 text-sm">
+            No links yet — shorten your first URL above.
+          </p>
+        )
+      ) : (
+        <div className="text-center py-8 space-y-3">
+          <p className="text-zinc-500 text-sm">
+            <Link href="/auth/signin" className="text-violet-400 hover:underline">
+              Sign in with Google
+            </Link>{" "}
+            to save links and see your personal dashboard.
+          </p>
+        </div>
       )}
     </div>
   );

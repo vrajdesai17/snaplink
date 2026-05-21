@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
+import { AuthNav } from "@/components/auth-nav";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -33,6 +34,7 @@ export default function RootLayout({
               >
                 Dashboard
               </Link>
+              <AuthNav />
             </div>
           </div>
         </nav>
