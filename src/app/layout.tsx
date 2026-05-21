@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import Link from "next/link";
 import { AuthNav } from "@/components/auth-nav";
+import { GoogleAnalytics } from "@/components/google-analytics";
 import "./globals.css";
 
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
@@ -39,6 +40,7 @@ export default function RootLayout({
           </div>
         </nav>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">{children}</div>
+        <GoogleAnalytics id="G-31VER22ZJW" />
       </body>
     </html>
   );
