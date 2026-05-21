@@ -29,6 +29,9 @@ yarn-error.log*
 # vercel
 .vercel
 
+# private notes
+INTERVIEW_PREP.md
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts

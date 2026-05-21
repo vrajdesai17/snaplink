@@ -1,90 +1,150 @@
 # SnapLink — URL Shortener with Analytics
 
-A production-ready Bitly clone built for SDE portfolios. Features novel capabilities that go beyond the typical GitHub URL shortener.
+A production-ready URL shortener with intelligent slug generation, click analytics, and a 24×7 traffic heatmap.
 
-## Stack
+**Live demo → [snaplnk.vercel.app](https://snaplnk.vercel.app)**
 
-- **Next.js 15** (App Router, TypeScript)
-- **PostgreSQL** + Prisma ORM
-- **Redis** — write-through cache + sliding-window rate limiting
-- **Docker Compose** for local infra
-- **Vercel** (app) + **Railway** (Postgres + Redis) for deployment
+---
 
-## Novel Features
+## Features
 
-| Feature | What it is |
+- **Semantic slugs** — auto-generates readable codes like `gh-nextjs` from URL content instead of random characters
+- **OG metadata enrichment** — fetches title, description, and preview image for every link
+- **24×7 click heatmap** — shows which hour and day of the week gets the most traffic
+- **Burn-after-N links** — links that self-destruct after N clicks or a set date
+- **Google OAuth** — per-user dashboards, each user sees only their own links
+- **Redis caching** — redirects hit cache first (<1ms), zero DB load on repeat visits
+- **Sliding window rate limiting** — 10 shortens/min per IP via Redis sorted sets
+- **Click analytics** — geo, browser, OS, device, and referrer tracked on every click
+- **Async click tracking** — click is tracked after the redirect is already sent, no latency impact
+
+---
+
+## Tech Stack
+
+| Layer | Technology |
 |---|---|
-| **Semantic slugs** | Extracts domain + path keywords to auto-generate memorable codes like `gh-nextjs` or `vercel-docs` instead of random `x9k2mAB`. Falls back to base62 on collision. |
-| **OG metadata enrichment** | Auto-fetches Open Graph title, description, and preview image when shortening. Dashboard shows rich link previews. |
-| **24×7 click heatmap** | Hour-of-day × day-of-week grid showing *when* your audience clicks — reveals timezone patterns, peak hours, weekday vs weekend behavior. |
-| **Burn-after-N-clicks** | Links self-destruct after N clicks or a date. Useful for sharing time-sensitive or capacity-limited resources. |
+| Framework | Next.js 16 (App Router, TypeScript) |
+| Database | PostgreSQL via Prisma ORM |
+| Cache / Rate limiting | Redis (ioredis) |
+| Auth | Auth.js v5 (Google OAuth) |
+| Charts | Recharts |
+| Styling | Tailwind CSS |
+| Deployment | Vercel (app) + Railway (Postgres + Redis) |
 
-## Standard Features
+---
 
-- Base62 encoding with collision handling
-- Click analytics: geo (via Vercel headers), browser, OS, device, referrer
-- Sliding window rate limiting (10 req/min/IP) via Redis sorted sets
-- Write-through Redis cache (24h TTL, invalidated on delete)
-- Redirect handler with async click tracking (zero latency impact)
+## Local Setup
 
-## Local Development
+### Prerequisites
+- Node.js 18+
+- Docker Desktop
+
+### Steps
 
 ```bash
-# 1. Start Postgres + Redis
-docker-compose up -d
+# 1. Clone the repo
+git clone https://github.com/YOUR_USERNAME/url-shortener.git
+cd url-shortener
 
 # 2. Install dependencies
 npm install
 
-# 3. Set env vars
-cp .env.example .env.local
-# (defaults work with docker-compose)
+# 3. Start Postgres and Redis
+docker-compose up -d
 
-# 4. Push DB schema
+# 4. Copy env file
+cp .env.example .env.local
+
+# 5. Push database schema
 npm run db:push
 
-# 5. Start dev server
+# 6. Start dev server
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### Environment Variables
+
+| Variable | Description |
+|---|---|
+| `DATABASE_URL` | PostgreSQL connection string |
+| `REDIS_URL` | Redis connection string |
+| `NEXT_PUBLIC_APP_URL` | Your app's public URL |
+| `AUTH_SECRET` | Random 32-byte secret for Auth.js sessions |
+| `AUTH_GOOGLE_ID` | Google OAuth client ID |
+| `AUTH_GOOGLE_SECRET` | Google OAuth client secret |
+
+---
+
 ## Deployment
 
-### Vercel (app)
-```bash
-vercel deploy
-```
-Set env vars in Vercel dashboard:
-- `DATABASE_URL` — Railway Postgres connection string
-- `REDIS_URL` — Railway Redis connection string
-- `NEXT_PUBLIC_APP_URL` — your Vercel domain
+### 1. Provision infrastructure (Railway)
+- Create a Railway project
+- Add **PostgreSQL** and **Redis** services
+- Copy the public connection strings for both
 
-### Railway (Postgres + Redis)
-1. Create a new Railway project
-2. Add PostgreSQL and Redis services
-3. Copy connection strings to Vercel env vars
-4. Run `prisma db push` against the Railway DB
+### 2. Deploy app (Vercel)
+```bash
+vercel deploy --prod
+```
+
+### 3. Set environment variables in Vercel
+Add all 6 variables from the table above via the Vercel dashboard or CLI.
+
+### 4. Push schema to production database
+```bash
+DATABASE_URL="your-railway-postgres-url" npx prisma db push
+```
+
+### 5. Configure Google OAuth
+In [Google Cloud Console](https://console.cloud.google.com):
+- Go to APIs & Services → Credentials → your OAuth client
+- Add `https://your-domain.vercel.app/api/auth/callback/google` to Authorized redirect URIs
+
+---
 
 ## Architecture
 
 ```
 Browser → GET /[code]
-           ↓
+           │
       Redis cache hit?
-      ├─ Yes → redirect (< 1ms)
-      └─ No  → Prisma lookup → cache + redirect
-                   ↓
-             trackClick() [async, fire-and-forget]
-                   ↓
-             INSERT click + UPDATE click_count
+      ├─ Yes → redirect immediately (<1ms)
+      └─ No  → Prisma DB lookup → cache result → redirect
+                    │
+              trackClick() ← fire-and-forget (async)
+                    │
+              INSERT click row + UPDATE click_count
 ```
 
-## Resume Bullets
+### Key design decisions
+
+- **Write-through cache** — new links are cached on creation, not just on first read
+- **Semantic slugs** — extracted from domain + path keywords, falls back to base62 on collision
+- **Async tracking** — `trackClick()` runs after `NextResponse.redirect()` is returned so the user never waits
+- **Graceful Redis fallback** — if Redis is down, the app still works using DB lookups only
+
+---
+
+## Database Schema
 
 ```
-- Built URL shortener handling 10K+ req/min with Redis write-through cache reducing DB load by ~80%
-- Engineered semantic slug algorithm extracting URL keywords for human-readable codes; base62 fallback with collision handling
-- Implemented sliding-window rate limiting (Redis sorted sets) and 24×7 click heatmap showing traffic patterns by hour + day-of-week
-- Designed PostgreSQL schema with Prisma ORM; async click tracking adds zero latency to redirects
+users        — OAuth user accounts
+urls         — shortened links (userId, shortCode, ogTitle, maxClicks, expiresAt)
+clicks       — one row per click (country, browser, device, hourOfDay, dayOfWeek)
+accounts     — Auth.js OAuth account links
+sessions     — Auth.js session tokens
+```
+
+---
+
+## Scripts
+
+```bash
+npm run dev          # start development server
+npm run build        # production build
+npm run db:push      # sync Prisma schema to database
+npm run db:studio    # open Prisma Studio (visual DB browser)
 ```
