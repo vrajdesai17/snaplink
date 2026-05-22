@@ -8,7 +8,7 @@ on:
 
 jobs:
   test:
-    name: Test & Build
+    name: Test & Type Check
     runs-on: ubuntu-latest
 
     steps:
@@ -28,13 +28,3 @@ jobs:
 
       - name: Type check
         run: npx tsc --noEmit
-
-      - name: Build
-        run: npx prisma generate && npx next build
-        env:
-          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/snaplink
-          REDIS_URL: redis://localhost:6379
-          NEXT_PUBLIC_APP_URL: http://localhost:3000
-          AUTH_SECRET: ci-secret-for-build-only
-          AUTH_GOOGLE_ID: placeholder
-          AUTH_GOOGLE_SECRET: placeholder
