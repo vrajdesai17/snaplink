@@ -6,6 +6,11 @@ A production-ready URL shortener with intelligent slug generation, click analyti
 
 ---
 
+## Screenshots
+
+![Dashboard](docs/screenshot-dashboard.png)
+![Heatmap](docs/screenshot-heatmap.png)
+
 ## Features
 
 - **Semantic slugs** — auto-generates readable codes like `gh-nextjs` from URL content instead of random characters
@@ -44,7 +49,7 @@ A production-ready URL shortener with intelligent slug generation, click analyti
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/YOUR_USERNAME/url-shortener.git
+git clone https://github.com/vrajdesai17/snaplink.git
 cd url-shortener
 
 # 2. Install dependencies
